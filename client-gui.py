@@ -42,11 +42,11 @@ Connect to HOST and PORT
 """
 def connectServer(*arg):
     try:
-	    sendSocket.connect((HOST, PORT))
+	sendSocket.connect((HOST, PORT))
     except:
         #textboxPrint('Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n')
-	    print 'Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n'
-	    sys.exit()
+	print 'Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n'
+	sys.exit()
     finally:
         pass
     #textboxPrint('Connected to chat server\n')
