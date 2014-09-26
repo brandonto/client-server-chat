@@ -1,3 +1,8 @@
+"""
+Trial project - Team NILE
+IRC chat client
+"""
+
 import socket, select, string, sys
 import Tkinter
 import threading
@@ -7,7 +12,6 @@ Send contents of entry box, prints it then clears it
 """
 def outbuttonCallback(*args):
     entry.focus_force()
-    #print('>>', entry.get())
     textboxPrint('<You> '+entry.get())
     sendMessage(entry.get())
     clearEntry()
@@ -74,11 +78,11 @@ class networkTaskThread(threading.Thread):
                         sys.exit()
                     else:
                         #Fix to weird symbol at beginning
-                        textboxPrint(data[1:])
+                        textboxPrint(data)
 
 if __name__ == "__main__":
 
-    HOST = "10.0.0.22"
+    HOST = "192.168.1.10"
     PORT = 5000
     sendSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sendSocket.settimeout(None)
@@ -121,3 +125,4 @@ if __name__ == "__main__":
 
     root.mainloop()
 
+    sendSocket.close()
