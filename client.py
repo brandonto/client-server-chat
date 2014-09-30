@@ -3,9 +3,18 @@ Trial project - Team NILE
 IRC chat client
 """
 
-import socket, select, string, sys, threading
+import socket, select, string, sys, threading, datetime, Tkinter
 import xml.etree.ElementTree as ET
-import Tkinter
+
+"""
+XML string format of messages:
+
+<data>
+    <setname old="" new=""></setname>
+    <message sender="" payload=""></message>
+</data>
+
+"""
 
 NAME = 'Anonymous'
 
@@ -62,7 +71,7 @@ Print contents of entry box
 def textboxPrint(message, urgent=False):
     textbox.configure(state='normal')
     startHighlight = Tkinter.END
-    textbox.insert(Tkinter.END, message+'\n')
+    textbox.insert(Tkinter.END, formatCurrentTime()+' '+message+'\n')
     if urgent:
         textbox.tag_add("urgent", startHighlight, Tkinter.END)
         textbox.tag_config("urgent", foreground="red")
@@ -85,10 +94,13 @@ def clearFocus(*args):
 Formats a string to be compatible with XML
 """
 def formatXmlString(string):
-    string.replace('&', '&amp;').replace('<','&lt;').replace('>', '&gt;')
+    return string.replace('&', '&amp;').replace('<','&lt;').replace('>', '&gt;').replace('"','&quot;').replace("'",'&#39;')
+
+def formatCurrentTime():
+    return '['+str(datetime.datetime.now()).split('.')[0].split(' ')[1]+']'
 
 """
-Parse message XML and output on textbox
+Parse message XML string and output on textbox
 """
 def onReceive(data):
     treeRoot = ET.fromstring(data)
@@ -113,12 +125,12 @@ def connectServer(*arg):
         sendSocket.connect((HOST, PORT))
     except:
         textboxPrint('Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n', urgent=True)
-        print 'Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n'
+        print 'Cannot connect to Host: ' + str(HOST) + ':' + str(PORT)
         sys.exit()
     finally:
         pass
     textboxPrint('Connected to chat server', urgent=True)
-    print 'Connected to chat server\n'
+    print 'Connected to chat server'
 
 """
 Thread running network logic alongside GUI loop
@@ -137,7 +149,7 @@ class networkTaskThread(threading.Thread):
                 if listeningSocket == sendSocket:
                     data = listeningSocket.recv(8192)
                     if not data:
-                        print 'Disconnected from chat server\n'
+                        print 'Disconnected from chat server'
                         textboxPrint('Disconnected from chat server', urgent=True)
                         sys.exit()
                     else:

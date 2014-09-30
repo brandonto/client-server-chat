@@ -3,7 +3,18 @@ Trial project - Team NILE
 IRC chat server
 """
 
-import socket, select, re, fcntl, struct
+import socket, select, re, fcntl, struct, threading
+#import pifacedigitalio
+
+"""
+XML string format of messages:
+
+<data>
+    <setname old="" new=""></setname>
+    <message sender="" payload=""></message>
+</data>
+
+"""
 
 """
 http://raspberrypi.stackexchange.com/questions/6714/how-to-get-the-raspberry-pis-ip-address-for-ssh
@@ -19,6 +30,7 @@ def get_ip_address(ifname):
     )
     #usage: get_ip_address('lo')
     #       get_ip_address('eth0')
+    #       get_ip_address('wlan0')
 
 #"""
 #Get username according to IP address
@@ -35,8 +47,6 @@ def get_ip_address(ifname):
 #	    return "Haifa"
 #    elif ipAddress == "10.0.0.25":
 #	    return "Itaf"
-#    elif ipAddress == "192.168.1.10":
-#	    return "Desktop"
 #    else:
 #	    return address
 
@@ -46,17 +56,21 @@ Except for the client who sent the data
 """
 def sendData(sock, message):
     for socket in CLIENTS_LIST:
-	if socket != listeningSocket and socket != sock:
+        if socket != listeningSocket and socket != sock:
 	    try:
-		    socket.send(message)
+		socket.send(message)
 	    except:
-		    socket.close()
-		    CLIENTS_LIST.remove(socket)
+		socket.close()
+		CLIENTS_LIST.remove(socket)
 
 """
 Get message from 1 client and send it across all other clients and close disconnected clients"
 """
 def runChatProgram():
+    #ev_led = threading.Event()
+    #temp = threading.Thread(target=ledflash,args=(ev_led,))
+    #temp.daemon = True
+    #temp.start()
     while True:
 	read_sockets,write_sockets,error_sockets = select.select(CLIENTS_LIST, [], [])
 	for clientSocket in read_sockets:
@@ -64,22 +78,37 @@ def runChatProgram():
 	    Spawn new listening socket to client connection and send out notice
 	    """
 	    if clientSocket == listeningSocket:
-		    newClient, address = listeningSocket.accept()
-		    CLIENTS_LIST.append(newClient)
-		    #print userName(str(newClient.getpeername())) + " is connected\n"
-		    print "A client has connected"
-		    sendData(newClient, '<data><message sender="" payload="A new user has joined the chat room"></message></data>')
+		newClient, address = listeningSocket.accept()
+		CLIENTS_LIST.append(newClient)
+		print "A client has connected"
+		sendData(newClient, '<data><message sender="" payload="A new user has joined the chat room"></message></data>')
 	    else:
-		    try:
-		        data = clientSocket.recv(BUFFER)
-		        if data:
-			        #sendData(clientSocket, '<' + userName(str(clientSocket.getpeername())) + '> ' + data)
-			        sendData(clientSocket, data)
-		    except:
-		        #sendData(clientSocket, userName(str(clientSocket.getpeername())) + " left chat room")
-		        #clientSocket.close()
-		        #CLIENTS_LIST.remove(clientSocket)
-		        continue
+		try:
+		    data = clientSocket.recv(BUFFER)
+		    if data:
+                        #ev_led.set()
+			sendData(clientSocket, data)
+		except:
+		    #sendData(clientSocket, userName(str(clientSocket.getpeername())) + " left chat room")
+		    #clientSocket.close()
+		    #CLIENTS_LIST.remove(clientSocket)
+		    continue
+
+"""
+ledflash(ev_flash)
+flashes an led when the ev_flash event is triggered. 
+This function is meant to be run in a thread as a deamon.
+
+ev_flash: a threading.Event object used to signal when to flash the led
+"""
+#def ledflash(ev_flash):
+#    pi = pifacedigitalio.PiFaceDigital()
+#    while(True):
+#        ev_flash.wait()
+#        pi.leds[7].turn_on()
+#        sleep(50/1000.0)
+#        pi.leds[7].turn_off()
+#        ev_flash.clear()
 
 """
  Main program, which opens server listening socket
@@ -102,8 +131,13 @@ if __name__ == "__main__":
     listeningSocket.listen(5)
 
     CLIENTS_LIST.append(listeningSocket)
-    #print "Server is listening at static address: 10.0.0.1:" + str(PORT)
-    print "Server is listening at static address: " + get_ip_address('eth0') + ":" + str(PORT)
+    try:
+        print "Server is listening at static address: " + get_ip_address('eth0') + ":" + str(PORT)
+    except:
+        try:
+            print "Server is listening at static address: " + get_ip_address('wlan0') + ":" + str(PORT)
+        except:
+            print "Server could not be hosted"
 
     runChatProgram()
     listeningSocket.shutdown(SHUT_RDWR)
