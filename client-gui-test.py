@@ -4,6 +4,7 @@ IRC chat client
 """
 
 import socket, select, string, sys, threading
+import xml.etree.ElementTree as ET
 import Tkinter
 
 NAME = 'Anonymous'
@@ -16,7 +17,7 @@ def outbuttonCallback(*args):
     newMessage = entry.get()
     textboxPrint('<You> '+newMessage)
     global NAME
-    sendMessage('<name>'+NAME+'</name>\n<message>'+newMessage+'</message>')
+    sendMessage('<data><message sender="'+formatXmlString(NAME)+'" payload="'+formatXmlString(newMessage)+'"></message></data>')
     clearEntry()
 
 """
@@ -26,16 +27,22 @@ def namebuttonCallback(*args):
     global NAME
     name.focus_force()
     newName = name.get()
-    if newName == "" and NAME != "Anonymous":
-        textboxPrint('You changed your name to Anonymous')
-        sendMessage('<setname old="'+NAME+'" new="Anonymous"></setname>')
+    if len(newName) > 20:
+        textboxPrint(name.get()+' is too long, names must be less than 20 characters')
+        name.delete(0, len(name.get()))
+        name.insert(Tkinter.END, NAME)
+    elif newName == "" and NAME != "Anonymous":
+        textboxPrint('You have changed your name to Anonymous', urgent=True)
+        sendMessage('<data><setname old="'+formatXmlString(NAME)+'" new="Anonymous"></setname></data>')
         NAME = 'Anonymous'
         name.insert(Tkinter.END, 'Anonymous')
     elif newName != "" and newName != NAME:
-        textboxPrint('You changed your name to '+newName)
-        sendMessage('<setname old="'+NAME+'" new="'+newName+'"></setname>')
+        textboxPrint('You have changed your name to '+newName, urgent=True)
+        sendMessage('<data><setname old="'+formatXmlString(NAME)+'" new="'+formatXmlString(newName)+'"></setname></data>')
         NAME = newName
     else:
+        name.delete(0, len(name.get()))
+        NAME = 'Anonymous'
         pass
     clearFocus()
 
@@ -46,15 +53,19 @@ def sendMessage(arg):
     try:
         sendSocket.send(arg)
     except:
-        textboxPrint('Disconnected from chat server\n')
+        textboxPrint('Disconnected from chat server', urgent=True)
         sys.exit()
 
 """
 Print contents of entry box
 """
-def textboxPrint(arg):
+def textboxPrint(message, urgent=False):
     textbox.configure(state='normal')
-    textbox.insert(Tkinter.END, arg+'\n')
+    startHighlight = Tkinter.END
+    textbox.insert(Tkinter.END, message+'\n')
+    if urgent:
+        textbox.tag_add("urgent", startHighlight, Tkinter.END)
+        textbox.tag_config("urgent", foreground="red")
     textbox.see(Tkinter.END)
     textbox.configure(state='disabled')
 
@@ -71,10 +82,28 @@ def clearFocus(*args):
     root.focus()
 
 """
+Formats a string to be compatible with XML
+"""
+def formatXmlString(string):
+    string.replace('&', '&amp;').replace('<','&lt;').replace('>', '&gt;')
+
+"""
 Parse message XML and output on textbox
 """
 def onReceive(data):
-    pass
+    treeRoot = ET.fromstring(data)
+    elementList = treeRoot.findall("./")
+    for element in elementList:
+        if element.tag == "setname":
+            textboxPrint(element.attrib['old']+' has changed their name to '+element.attrib['new'], urgent=True)
+        elif element.tag == "message":
+            sender = element.attrib['sender']
+            if sender == "": #From the server
+                textboxPrint(element.attrib['payload'], urgent=True)
+            else:
+                textboxPrint('<'+element.attrib['sender']+'> '+element.attrib['payload'])
+        else:
+            pass
 
 """
 Connect to HOST and PORT
@@ -83,12 +112,12 @@ def connectServer(*arg):
     try:
         sendSocket.connect((HOST, PORT))
     except:
-        textboxPrint('Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n')
+        textboxPrint('Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n', urgent=True)
         print 'Cannot connect to Host: ' + str(HOST) + ':' + str(PORT) + '\n'
         sys.exit()
     finally:
         pass
-    textboxPrint('Connected to chat server\n')
+    textboxPrint('Connected to chat server', urgent=True)
     print 'Connected to chat server\n'
 
 """
@@ -109,11 +138,11 @@ class networkTaskThread(threading.Thread):
                     data = listeningSocket.recv(8192)
                     if not data:
                         print 'Disconnected from chat server\n'
-                        textboxPrint('Disconnected from chat server\n')
+                        textboxPrint('Disconnected from chat server', urgent=True)
                         sys.exit()
                     else:
-                        #onReceive(data)
-                        textboxPrint(data)
+                        onReceive(data)
+                        #textboxPrint(data)
 
 if __name__ == "__main__":
     if len(sys.argv)!=2:

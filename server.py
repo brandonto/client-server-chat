@@ -68,7 +68,7 @@ def runChatProgram():
 		    CLIENTS_LIST.append(newClient)
 		    #print userName(str(newClient.getpeername())) + " is connected\n"
 		    print "A client has connected"
-		    sendData(newClient, "A new user has joined the chat room")
+		    sendData(newClient, '<data><message sender="" payload="A new user has joined the chat room"></message></data>')
 	    else:
 		    try:
 		        data = clientSocket.recv(BUFFER)
