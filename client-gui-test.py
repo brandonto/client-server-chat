@@ -6,14 +6,38 @@ IRC chat client
 import socket, select, string, sys, threading
 import Tkinter
 
+NAME = 'Anonymous'
+
 """
 Send contents of entry box, prints it then clears it
 """
 def outbuttonCallback(*args):
     entry.focus_force()
-    textboxPrint('<You> '+entry.get())
-    sendMessage(entry.get())
+    newMessage = entry.get()
+    textboxPrint('<You> '+newMessage)
+    global NAME
+    sendMessage('<name>'+NAME+'</name>\n<message>'+newMessage+'</message>')
     clearEntry()
+
+"""
+Changes name of client, and sends new name
+"""
+def namebuttonCallback(*args):
+    global NAME
+    name.focus_force()
+    newName = name.get()
+    if newName == "" and NAME != "Anonymous":
+        textboxPrint('You changed your name to Anonymous')
+        sendMessage('<setname old="'+NAME+'" new="Anonymous"></setname>')
+        NAME = 'Anonymous'
+        name.insert(Tkinter.END, 'Anonymous')
+    elif newName != "" and newName != NAME:
+        textboxPrint('You changed your name to '+newName)
+        sendMessage('<setname old="'+NAME+'" new="'+newName+'"></setname>')
+        NAME = newName
+    else:
+        pass
+    clearFocus()
 
 """
 Send contents of entry box
@@ -35,10 +59,22 @@ def textboxPrint(arg):
     textbox.configure(state='disabled')
 
 """
-Clear contents in entry box
+Clear text from entry widget
 """
 def clearEntry(*args):
     entry.delete(0, len(entry.get()))
+
+"""
+Clear focus from widget
+"""
+def clearFocus(*args):
+    root.focus()
+
+"""
+Parse message XML and output on textbox
+"""
+def onReceive(data):
+    pass
 
 """
 Connect to HOST and PORT
@@ -76,7 +112,7 @@ class networkTaskThread(threading.Thread):
                         textboxPrint('Disconnected from chat server\n')
                         sys.exit()
                     else:
-                        #Fix to weird symbol at beginning
+                        #onReceive(data)
                         textboxPrint(data)
 
 if __name__ == "__main__":
@@ -96,6 +132,18 @@ if __name__ == "__main__":
     frame = Tkinter.Frame(root)
     frame.pack(padx=2, pady=2)
 
+    nameLabel = Tkinter.Label(frame, text="Name:")
+    nameLabel.pack(side=Tkinter.LEFT)
+
+    name = Tkinter.Entry(frame)
+    name.bind("<Return>", namebuttonCallback)
+    name.bind("<Escape>", clearFocus)
+    name.insert(Tkinter.END, 'Anonymous')
+    name.pack(padx=3, side=Tkinter.LEFT)
+
+    namebutton = Tkinter.Button(frame, text="Change", command=namebuttonCallback)
+    namebutton.pack(padx=2, pady=2, side=Tkinter.LEFT)
+
     frameTextbox = Tkinter.Frame(frame)
     frameTextbox.pack()
 
@@ -106,8 +154,8 @@ if __name__ == "__main__":
     textbox.configure(state='disabled')
     textbox.pack()
 
-    label = Tkinter.Label(frame, text="Text:")
-    label.pack(side=Tkinter.LEFT)
+    textLabel = Tkinter.Label(frame, text="Text:")
+    textLabel.pack(side=Tkinter.LEFT)
 
     entry = Tkinter.Entry(frame)
     entry.bind("<Return>", outbuttonCallback)

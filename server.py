@@ -3,27 +3,42 @@ Trial project - Team NILE
 IRC chat server
 """
 
-import socket, select, re
+import socket, select, re, fcntl, struct
 
 """
-Get username according to IP address
+http://raspberrypi.stackexchange.com/questions/6714/how-to-get-the-raspberry-pis-ip-address-for-ssh
 """
-def userName(address):
-    ipAddress = re.search('\'[\d]*.[\d]*.[\d]*.[\d]*\'', address).group(0).strip('\'')
-    if ipAddress == "10.0.0.21":
-	    return "Noah"
-    elif ipAddress == "10.0.0.22":
-	    return "Brandon"
-    elif ipAddress == "10.0.0.23":
-	    return "Nhat"
-    elif ipAddress == "10.0.0.24":
-	    return "Haifa"
-    elif ipAddress == "10.0.0.25":
-	    return "Itaf"
-    elif ipAddress == "192.168.1.10":
-	    return "Brandon-Desktop"
-    else:
-	    return address
+def get_ip_address(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.inet_ntoa(
+        fcntl.ioctl(
+            s.fileno(),
+            0x8915,  # SIOCGIFADDR
+            struct.pack('256s', ifname[:15])
+        )[20:24]
+    )
+    #usage: get_ip_address('lo')
+    #       get_ip_address('eth0')
+
+#"""
+#Get username according to IP address
+#"""
+#def userName(address):
+#    ipAddress = re.search('\'[\d]*.[\d]*.[\d]*.[\d]*\'', address).group(0).strip('\'')
+#    if ipAddress == "10.0.0.21":
+#	    return "Noah"
+#    elif ipAddress == "10.0.0.22":
+#	    return "Brandon"
+#    elif ipAddress == "10.0.0.23":
+#	    return "Nhat"
+#    elif ipAddress == "10.0.0.24":
+#	    return "Haifa"
+#    elif ipAddress == "10.0.0.25":
+#	    return "Itaf"
+#    elif ipAddress == "192.168.1.10":
+#	    return "Desktop"
+#    else:
+#	    return address
 
 """
 Send data to clients in socket list
@@ -51,17 +66,19 @@ def runChatProgram():
 	    if clientSocket == listeningSocket:
 		    newClient, address = listeningSocket.accept()
 		    CLIENTS_LIST.append(newClient)
-		    print userName(str(newClient.getpeername())) + " is connected\n"
-		    sendData(newClient, userName(str(newClient.getpeername())) + " joined chat room")
+		    #print userName(str(newClient.getpeername())) + " is connected\n"
+		    print "A client has connected"
+		    sendData(newClient, "A new user has joined the chat room")
 	    else:
 		    try:
 		        data = clientSocket.recv(BUFFER)
 		        if data:
-			        sendData(clientSocket, '<' + userName(str(clientSocket.getpeername())) + '> ' + data)
+			        #sendData(clientSocket, '<' + userName(str(clientSocket.getpeername())) + '> ' + data)
+			        sendData(clientSocket, data)
 		    except:
-		        sendData(clientSocket, userName(str(clientSocket.getpeername())) + " left chat room")
-		        clientSocket.close()
-		        CLIENTS_LIST.remove(clientSocket)
+		        #sendData(clientSocket, userName(str(clientSocket.getpeername())) + " left chat room")
+		        #clientSocket.close()
+		        #CLIENTS_LIST.remove(clientSocket)
 		        continue
 
 """
@@ -85,7 +102,8 @@ if __name__ == "__main__":
     listeningSocket.listen(5)
 
     CLIENTS_LIST.append(listeningSocket)
-    print "Server is listening at static address: 192.168.1.10:" + str(PORT)
+    #print "Server is listening at static address: 10.0.0.1:" + str(PORT)
+    print "Server is listening at static address: " + get_ip_address('eth0') + ":" + str(PORT)
 
     runChatProgram()
     listeningSocket.shutdown(SHUT_RDWR)
